@@ -32,11 +32,14 @@ app.get("/health", (_req, res) => {
 app.post("/update-event", async (req, res) => {
   if (!checkSecret(req, res)) return;
 
+  console.log("📝 Received event update request:", req.body);
+
   const { channelId, messageId, embed } = req.body;
 
   try {
     const channel = await client.channels.fetch(channelId);
     if (!channel?.isTextBased()) {
+      console.log("📝 Invalid channel:", channelId);
       return res.status(400).json({ error: "Invalid channel" });
     }
 
@@ -48,10 +51,12 @@ app.post("/update-event", async (req, res) => {
 
     if (messageId) {
       // Update existing message
+      console.log("📝 Updating existing message:", messageId);
       message = await channel.messages.fetch(messageId);
       await message.edit(payload);
     } else {
       // Create new message
+      console.log("📝 Creating new message:", payload);
       message = await channel.send(payload);
 
       await message.react("✅");
