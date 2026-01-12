@@ -56,3 +56,5 @@ const PORT = process.env.PORT ?? 3001;
 app.listen(PORT, () => {
   console.log(`🚀 Bot API running on port ${PORT}`);
 });
+
+client.login(process.env.DISCORD_BOT_TOKEN);
