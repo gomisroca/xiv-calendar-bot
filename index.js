@@ -17,6 +17,45 @@ client.once("clientReady", () => {
   console.log(`🤖 Bot logged in as ${client.user?.tag}`);
 });
 
+client.on("interactionCreate", async (interaction) => {
+  if (!interaction.isButton()) return;
+
+  const [action, eventId] = interaction.customId.split("_");
+
+  let status;
+  if (action === "rsvpattend") status = EventStatus.ATTENDING;
+  else if (action === "rsvpdecline") status = EventStatus.NOT_ATTENDING;
+
+  // 1. Update database
+  await fetch(`${FRONTEND_URL}/api/events/rsvp`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-bot-secret": process.env.BOT_SECRET,
+    },
+    body: JSON.stringify({ eventId, status, userId: interaction.user.id }),
+  });
+
+  // 2. Fetch the updated attendee list from DB
+  const attendees = await fetch(
+    `${FRONTEND_URL}/api//events/${eventId}/attendance`
+  );
+
+  // 3. Edit Discord message
+  const message = await interaction.message.fetch();
+  await message.edit({
+    content: `RSVPs updated!\n${attendees
+      .map((a) => `${a.statusEmoji} ${a.username}`)
+      .join("\n")}`,
+    components: message.components, // keep buttons
+  });
+
+  await interaction.reply({
+    content: "Your RSVP was recorded!",
+    ephemeral: true,
+  });
+});
+
 app.get("/health", (_req, res) => {
   res.send("ok");
 });
@@ -57,4 +96,12 @@ app.listen(PORT, () => {
   console.log(`🚀 Bot API running on port ${PORT}`);
 });
 
-client.login(process.env.DISCORD_BOT_TOKEN);
+client
+  .login(process.env.DISCORD_BOT_TOKEN)
+  .then(() => {
+    console.log("✅ Discord client login initiated");
+  })
+  .catch((err) => {
+    console.error("❌ Discord login failed", err);
+    process.exit(1);
+  });
