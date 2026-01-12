@@ -65,6 +65,8 @@ app.post("/add-reactions", async (req, res) => {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
+  console.log("🔃 Received add-reactions request", req.body);
+
   const { channelId, messageId } = req.body;
 
   if (!channelId || !messageId) {
@@ -82,6 +84,8 @@ app.post("/add-reactions", async (req, res) => {
 
     await message.react("✅");
     await message.react("❌");
+
+    console.log("✅ Added reactions to message");
 
     res.json({ success: true });
   } catch (err) {
