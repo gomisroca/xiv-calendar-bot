@@ -46,12 +46,7 @@ app.post("/update-event", async (req, res) => {
     let message;
     const payload = {
       content: `React to RSVP!`,
-      embeds: [
-        {
-          ...embed,
-          description: embed.description || "No description provided",
-        },
-      ],
+      embeds: embed.embeds,
     };
 
     if (messageId) {
