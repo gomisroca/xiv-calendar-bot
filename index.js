@@ -3,7 +3,11 @@ import { Client, GatewayIntentBits } from "discord.js";
 import express from "express";
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessageReactions,
+    GatewayIntentBits.GuildMessages,
+  ],
 });
 
 const app = express();
@@ -11,6 +15,10 @@ app.use(express.json());
 
 client.once("clientReady", () => {
   console.log(`🤖 Bot logged in as ${client.user?.tag}`);
+});
+
+app.get("/health", (_req, res) => {
+  res.send("ok");
 });
 
 app.post("/add-reactions", async (req, res) => {
@@ -43,9 +51,7 @@ app.post("/add-reactions", async (req, res) => {
   }
 });
 
-const PORT = 3001;
-
-client.login(process.env.DISCORD_BOT_TOKEN);
+const PORT = process.env.PORT ?? 3001;
 
 app.listen(PORT, () => {
   console.log(`🚀 Bot API running on port ${PORT}`);
