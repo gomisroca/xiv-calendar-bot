@@ -63,8 +63,14 @@ client.on("interactionCreate", async (interaction) => {
     if (!updateRes.ok) console.error("Failed to update RSVP for user", user.id);
   } catch (err) {
     console.error("Button handling failed", err);
+
     if (!interaction.replied && !interaction.deferred) {
       await interaction.reply({
+        content: "❌ Failed to update RSVP",
+        ephemeral: true,
+      });
+    } else if (interaction.deferred) {
+      await interaction.followUp({
         content: "❌ Failed to update RSVP",
         ephemeral: true,
       });
