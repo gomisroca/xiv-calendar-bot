@@ -143,7 +143,7 @@ app.post("/update-event", async (req, res) => {
     let message;
     const payload = {
       content: `React to RSVP!`,
-      embeds: embed.embeds,
+      embeds: [embed],
       components: renderRSVPButtons(eventId),
     };
 
