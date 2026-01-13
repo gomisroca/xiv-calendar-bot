@@ -15,17 +15,16 @@ client.once("clientReady", () => {
 
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isButton()) return;
-
   const { customId, user } = interaction;
   if (!customId.startsWith("rsvp:")) return;
 
   const [, eventId, status] = customId.split(":");
 
   try {
-    if (!interaction.deferred && !interaction.replied) {
-      await interaction.deferUpdate();
-    }
+    // 1️⃣ Defer immediately to prevent 10062
+    await interaction.deferUpdate();
 
+    // 2️⃣ Resolve Discord user → app user
     const resolveRes = await fetch(
       `${process.env.FRONTEND_URL}/api/discord/resolve-user`,
       {
@@ -50,6 +49,7 @@ client.on("interactionCreate", async (interaction) => {
 
     if (!resolveRes.ok) throw new Error("Failed to resolve Discord user");
 
+    // 3️⃣ Update RSVP
     const updateRes = await fetch(
       `${process.env.FRONTEND_URL}/api/events/update`,
       {
@@ -71,7 +71,7 @@ client.on("interactionCreate", async (interaction) => {
       return;
     }
 
-    // 3. Success message
+    // 4️⃣ Success message
     await interaction.followUp({
       content: `✅ Your RSVP has been updated to **${status.replace(
         "_",
@@ -81,7 +81,7 @@ client.on("interactionCreate", async (interaction) => {
     });
   } catch (err) {
     console.error("Button handling failed", err);
-
+    // Only follow-up; never reply after deferUpdate
     if (!interaction.replied && !interaction.deferred) {
       await interaction.reply({
         content: "❌ Failed to update RSVP",
