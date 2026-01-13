@@ -22,7 +22,6 @@ client.on("interactionCreate", async (interaction) => {
   const [, eventId, status] = customId.split(":");
 
   try {
-    // 1. Resolve Discord user → app user
     const resolveRes = await fetch(
       `${process.env.FRONTEND_URL}/api/discord/resolve-user`,
       {
@@ -45,11 +44,10 @@ client.on("interactionCreate", async (interaction) => {
       return;
     }
 
-    if (!resolveRes.ok) {
-      throw new Error("Failed to resolve Discord user");
-    }
+    if (!resolveRes.ok) throw new Error("Failed to resolve Discord user");
 
-    // 2. Update RSVP in your app
+    await interaction.deferUpdate();
+
     const updateRes = await fetch(
       `${process.env.FRONTEND_URL}/api/events/update`,
       {
@@ -58,23 +56,11 @@ client.on("interactionCreate", async (interaction) => {
           "Content-Type": "application/json",
           "x-bot-secret": process.env.BOT_SECRET,
         },
-        body: JSON.stringify({
-          eventId,
-          discordUserId: user.id,
-          status,
-        }),
+        body: JSON.stringify({ eventId, discordUserId: user.id, status }),
       }
     );
 
-    if (!updateRes.ok) {
-      throw new Error("Failed to update RSVP");
-    }
-
-    // 3. Acknowledge click (required by Discord)
-    await interaction.reply({
-      content: `✅ RSVP updated: **${status.replace("_", " ")}**`,
-      ephemeral: true,
-    });
+    if (!updateRes.ok) console.error("Failed to update RSVP for user", user.id);
   } catch (err) {
     console.error("Button handling failed", err);
     if (!interaction.replied) {
