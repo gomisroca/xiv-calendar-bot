@@ -22,6 +22,10 @@ client.on("interactionCreate", async (interaction) => {
   const [, eventId, status] = customId.split(":");
 
   try {
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferUpdate();
+    }
+
     const resolveRes = await fetch(
       `${process.env.FRONTEND_URL}/api/discord/resolve-user`,
       {
@@ -35,7 +39,7 @@ client.on("interactionCreate", async (interaction) => {
     );
 
     if (resolveRes.status === 404) {
-      await interaction.reply({
+      await interaction.followUp({
         content:
           "👋 Please link your account to RSVP:\n" +
           `${process.env.FRONTEND_URL}/login`,
@@ -45,8 +49,6 @@ client.on("interactionCreate", async (interaction) => {
     }
 
     if (!resolveRes.ok) throw new Error("Failed to resolve Discord user");
-
-    await interaction.deferUpdate();
 
     const updateRes = await fetch(
       `${process.env.FRONTEND_URL}/api/events/update`,
@@ -60,7 +62,23 @@ client.on("interactionCreate", async (interaction) => {
       }
     );
 
-    if (!updateRes.ok) console.error("Failed to update RSVP for user", user.id);
+    if (!updateRes.ok) {
+      console.error("Failed to update RSVP for user", user.id);
+      await interaction.followUp({
+        content: "❌ Failed to update RSVP. Please try again later.",
+        ephemeral: true,
+      });
+      return;
+    }
+
+    // 3. Success message
+    await interaction.followUp({
+      content: `✅ Your RSVP has been updated to **${status.replace(
+        "_",
+        " "
+      )}**`,
+      ephemeral: true,
+    });
   } catch (err) {
     console.error("Button handling failed", err);
 
@@ -69,7 +87,7 @@ client.on("interactionCreate", async (interaction) => {
         content: "❌ Failed to update RSVP",
         ephemeral: true,
       });
-    } else if (interaction.deferred) {
+    } else {
       await interaction.followUp({
         content: "❌ Failed to update RSVP",
         ephemeral: true,
