@@ -1,5 +1,9 @@
 import "dotenv/config";
-import { Client, GatewayIntentBits } from "discord.js";
+import {
+  Client,
+  GatewayIntentBits,
+  InteractionResponseFlags,
+} from "discord.js";
 import express from "express";
 
 const client = new Client({
