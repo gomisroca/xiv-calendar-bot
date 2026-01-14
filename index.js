@@ -1,9 +1,5 @@
 import "dotenv/config";
-import {
-  Client,
-  GatewayIntentBits,
-  InteractionResponseFlags,
-} from "discord.js";
+import { Client, GatewayIntentBits } from "discord.js";
 import express from "express";
 
 const client = new Client({
@@ -31,7 +27,7 @@ client.on("interactionCreate", async (interaction) => {
     // 📨 2. Optional instant feedback (safe after defer)
     await interaction.followUp({
       content: `✅ RSVP set to **${status}**`,
-      flags: InteractionResponseFlags.Ephemeral,
+      ephemeral: true,
     });
 
     // 🚀 3. Fire-and-forget async work
