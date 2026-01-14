@@ -15,81 +15,55 @@ client.once("clientReady", () => {
 
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isButton()) return;
+
   const { customId, user } = interaction;
   if (!customId.startsWith("rsvp:")) return;
 
   const [, eventId, status] = customId.split(":");
 
   try {
-    // 1️⃣ Defer immediately to prevent 10062
+    // ✅ 1. Defer immediately to acknowledge the interaction
     await interaction.deferUpdate();
 
-    // 2️⃣ Resolve Discord user → app user
-    const resolveRes = await fetch(
-      `${process.env.FRONTEND_URL}/api/discord/resolve-user`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-bot-secret": process.env.BOT_SECRET,
-        },
-        body: JSON.stringify({ discordUserId: user.id }),
+    // 🟢 2. Fire-and-forget: resolve user + update RSVP
+    (async () => {
+      try {
+        // Resolve Discord user → app user
+        const resolveRes = await fetch(
+          `${process.env.FRONTEND_URL}/api/discord/resolve-user`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-bot-secret": process.env.BOT_SECRET,
+            },
+            body: JSON.stringify({ discordUserId: user.id }),
+          }
+        );
+
+        if (!resolveRes.ok) return; // silently ignore failures
+
+        // Update RSVP in the app
+        await fetch(`${process.env.FRONTEND_URL}/api/events/update`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-bot-secret": process.env.BOT_SECRET,
+          },
+          body: JSON.stringify({ eventId, discordUserId: user.id, status }),
+        });
+      } catch (err) {
+        console.error("Fire-and-forget RSVP update failed", err);
       }
-    );
+    })();
 
-    if (resolveRes.status === 404) {
-      await interaction.followUp({
-        content:
-          "👋 Please link your account to RSVP:\n" +
-          `${process.env.FRONTEND_URL}/login`,
-        ephemeral: true,
-      });
-      return;
-    }
-
-    if (!resolveRes.ok) throw new Error("Failed to resolve Discord user");
-
-    // 3️⃣ Update RSVP
-    const updateRes = await fetch(
-      `${process.env.FRONTEND_URL}/api/events/update`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-bot-secret": process.env.BOT_SECRET,
-        },
-        body: JSON.stringify({ eventId, discordUserId: user.id, status }),
-      }
-    );
-
-    if (!updateRes.ok) {
-      console.error("Failed to update RSVP for user", user.id);
-      await interaction.followUp({
-        content: "❌ Failed to update RSVP. Please try again later.",
-        ephemeral: true,
-      });
-      return;
-    }
-
-    // 4️⃣ Success message
-    await interaction.followUp({
-      content: `✅ Your RSVP has been updated to **${status.replace(
-        "_",
-        " "
-      )}**`,
-      ephemeral: true,
-    });
+    // ✅ 3. Done — no need to reply further
   } catch (err) {
-    console.error("Button handling failed", err);
-    // Only follow-up; never reply after deferUpdate
+    // This should almost never happen since we deferred first
+    console.error("Interaction handling failed", err);
     if (!interaction.replied && !interaction.deferred) {
       await interaction.reply({
-        content: "❌ Failed to update RSVP",
-        ephemeral: true,
-      });
-    } else {
-      await interaction.followUp({
-        content: "❌ Failed to update RSVP",
+        content: "❌ Something went wrong",
         ephemeral: true,
       });
     }
