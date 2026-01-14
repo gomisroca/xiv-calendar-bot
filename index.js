@@ -15,20 +15,24 @@ client.once("clientReady", () => {
 
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isButton()) return;
+  if (!interaction.customId.startsWith("rsvp:")) return;
 
-  const { customId, user } = interaction;
-  if (!customId.startsWith("rsvp:")) return;
-
-  const [, eventId, status] = customId.split(":");
+  const [, eventId, status] = interaction.customId.split(":");
+  const { user } = interaction;
 
   try {
-    // ✅ 1. Defer immediately to acknowledge the interaction
+    // 🔑 1. Acknowledge immediately (THIS MUST BE FIRST)
     await interaction.deferUpdate();
 
-    // 🟢 2. Fire-and-forget: resolve user + update RSVP
+    // 📨 2. Optional instant feedback (safe after defer)
+    await interaction.followUp({
+      content: `✅ RSVP set to **${status}**`,
+      flags: InteractionResponseFlags.Ephemeral,
+    });
+
+    // 🚀 3. Fire-and-forget async work
     (async () => {
       try {
-        // Resolve Discord user → app user
         const resolveRes = await fetch(
           `${process.env.FRONTEND_URL}/api/discord/resolve-user`,
           {
@@ -41,32 +45,26 @@ client.on("interactionCreate", async (interaction) => {
           }
         );
 
-        if (!resolveRes.ok) return; // silently ignore failures
+        if (!resolveRes.ok) return;
 
-        // Update RSVP in the app
         await fetch(`${process.env.FRONTEND_URL}/api/events/update`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "x-bot-secret": process.env.BOT_SECRET,
           },
-          body: JSON.stringify({ eventId, discordUserId: user.id, status }),
+          body: JSON.stringify({
+            eventId,
+            discordUserId: user.id,
+            status,
+          }),
         });
       } catch (err) {
-        console.error("Fire-and-forget RSVP update failed", err);
+        console.error("RSVP background update failed", err);
       }
     })();
-
-    // ✅ 3. Done — no need to reply further
   } catch (err) {
-    // This should almost never happen since we deferred first
     console.error("Interaction handling failed", err);
-    if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({
-        content: "❌ Something went wrong",
-        ephemeral: true,
-      });
-    }
   }
 });
 
