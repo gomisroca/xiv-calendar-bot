@@ -13,6 +13,17 @@ client.once("clientReady", () => {
   console.log(`🤖 Bot logged in as ${client.user?.tag}`);
 });
 
+const attendanceMask = {
+  ATTENDING: "✅ Attending",
+  NOT_ATTENDING: "❌ Not Attending",
+  MAYBE: "❓ Maybe",
+  PENDING: "⏳ Pending",
+};
+
+function maskAttendance(status) {
+  return attendanceMask[status] ?? status;
+}
+
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isButton()) return;
   if (!interaction.customId.startsWith("rsvp:")) return;
@@ -26,7 +37,7 @@ client.on("interactionCreate", async (interaction) => {
 
     // 📨 2. Optional instant feedback (safe after defer)
     await interaction.followUp({
-      content: `✅ RSVP set to **${status}**`,
+      content: `RSVP set to **${maskAttendance(status)}**`,
       ephemeral: true,
     });
 
