@@ -87,7 +87,7 @@ function checkSecret(req, res) {
   return true;
 }
 
-function renderRSVPButtons(eventId) {
+function renderRSVPButtons(eventId, isClosed) {
   return [
     {
       type: 1, // ActionRow
@@ -97,18 +97,21 @@ function renderRSVPButtons(eventId) {
           label: "✅ Attend",
           style: 3, // Success
           custom_id: `rsvp:${eventId}:ATTENDING`,
+          disabled: isClosed,
         },
         {
           type: 2,
           label: "❓ Maybe",
           style: 2, // Secondary
           custom_id: `rsvp:${eventId}:MAYBE`,
+          disabled: isClosed,
         },
         {
           type: 2,
           label: "❌ Not attending",
           style: 4, // Danger
           custom_id: `rsvp:${eventId}:NOT_ATTENDING`,
+          disabled: isClosed,
         },
       ],
     },
@@ -124,7 +127,9 @@ app.post("/update-event", async (req, res) => {
 
   console.log("📝 Received event update request:", req.body);
 
-  const { channelId, messageId, embed, eventId } = req.body;
+  const { channelId, messageId, embed, eventId, eventStartTime } = req.body;
+
+  const isClosed = new Date(eventStartTime) <= new Date();
 
   try {
     const channel = await client.channels.fetch(channelId);
@@ -133,11 +138,17 @@ app.post("/update-event", async (req, res) => {
       return res.status(400).json({ error: "Invalid channel" });
     }
 
+    if (isClosed) {
+      embed.footer = {
+        text: "⛔ RSVPs are closed",
+      };
+    }
+
     let message;
     const payload = {
       content: `React to RSVP!`,
       embeds: [embed],
-      components: renderRSVPButtons(eventId),
+      components: renderRSVPButtons(eventId, isClosed),
     };
 
     if (messageId) {
